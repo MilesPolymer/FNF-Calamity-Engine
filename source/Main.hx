@@ -1,28 +1,18 @@
 package;
 
-import openfl.display.Mem;
-import flixel.FlxG;
 import flixel.FlxGame;
 import flixel.FlxState;
-import flixel.util.FlxColor;
-import sys.io.Process;
-import sys.io.File;
-import sys.FileSystem;
-import haxe.Exception;
 import openfl.Assets;
 import openfl.Lib;
-import openfl.display.Application;
-import openfl.display.BlendMode;
 import openfl.display.FPS;
-import openfl.display.SimpleInfoDisplay;
 import openfl.display.Sprite;
-import openfl.display.StageScaleMode;
+import openfl.events.AsyncErrorEvent;
 import openfl.events.Event;
-import openfl.text.TextFormat;
-import config.Preferences;
-import game.CoolUtil;
-//import dependency.Cache;
-import states.TitleState;
+import openfl.events.MouseEvent;
+import openfl.events.NetStatusEvent;
+import openfl.media.Video;
+import openfl.net.NetConnection;
+import openfl.net.NetStream;
 
 class Main extends Sprite
 {
@@ -30,38 +20,20 @@ class Main extends Sprite
 	var gameHeight:Int = 720; // Height of the game in pixels (might be less / more in actual pixels depending on your zoom).
 	var initialState:Class<FlxState> = TitleState; // The FlxState the game starts with.
 	var zoom:Float = -1; // If -1, zoom is automatically calculated to fit the window dimensions.
-	var framerate:Int = 150; // How many frames per second the game should run at.
+	#if web
+	var framerate:Int = 60; // How many frames per second the game should run at.
+	#else
+	var framerate:Int = 144; // How many frames per second the game should run at.
+
+	#end
 	var skipSplash:Bool = true; // Whether to skip the flixel splash screen that appears in release mode.
 	var startFullscreen:Bool = false; // Whether to start the game in fullscreen on desktop targets
-
-	public static var watermarks = true;
-	public static var fpsVar:FPS;
-	public static var fpsCounter:FPS;
 
 	// You can pretty much ignore everything from here on - your code should go in your states.
 
 	public static function main():Void
 	{
-		// quick checks
-		try {
-			Lib.current.addChild(new Main());
-		}
-		catch (e:Exception)
-		{
-			var fileStr:String = "";
-
-			fileStr += "CRASH REASON:" + e.message + "\n\n";
-
-			fileStr += e.stack.toString();
-
-			File.saveContent("crash-dialog/crash-logs/CRASHDUMP.txt", fileStr);
-			#if windows
-			var process = new Process('start .\\crash-dialog\\FizzyEngine-Crash.exe ".\\CRASHDUMP.txt"');
-			#else
-			Application.current.window.alert("FNF Crashed!\nCRASH REASON:" + e.message + "\nMORE INFO IN CRASHDUMP.TXT!", "FNF Crashed!");
-			#end
-			Sys.exit(1);
-		}
+		Lib.current.addChild(new Main());
 	}
 
 	public function new()
@@ -79,57 +51,91 @@ class Main extends Sprite
 	}
 
 	private function init(?E:Event):Void
+	{
+		if (hasEventListener(Event.ADDED_TO_STAGE))
 		{
-			if (hasEventListener(Event.ADDED_TO_STAGE))
-				removeEventListener(Event.ADDED_TO_STAGE, init);
-	
-			FlxG.save.bind('fizzy-engine', CoolUtil.getSavePath());
-	
-			#if (flixel < "5.0.0")
-			var stageWidth:Int = Lib.current.stage.stageWidth;
-			var stageHeight:Int = Lib.current.stage.stageHeight;
-			var zoom:Float = Math.min(stageWidth / gameWidth, stageHeight / gameHeight);
-			#end
-			addChild(new FlxGame(#if (flixel < "5.0.0") Math.ceil(stageWidth / zoom) #else gameWidth #end,
-				#if (flixel < "5.0.0") Math.ceil(stageHeight / zoom) #else gameHeight #end, initialState, #if (flixel < "5.0.0") zoom, #end framerate, framerate,
-				skipSplash, startFullscreen));
-	
-			FlxG.mouse.useSystemCursor = true;
-	
-			fpsVar = new FPS(10, 3, 0xFFFFFF);
-			addChild(fpsVar);
-			
-			memoryCounter = new Mem(10, 3, 0xffffff);
-			addChild(memoryCounter);
-				   
-			display = new SimpleInfoDisplay(10, 3, 0xFFFFFF);
-			addChild(display);
-	
-			#if !mobile
-			Lib.current.stage.align = "tl";
-			Lib.current.stage.scaleMode = StageScaleMode.NO_SCALE;
-			#end
-	
-			#if CRASH_HANDLER
-			Lib.current.loaderInfo.uncaughtErrorEvents.addEventListener(UncaughtErrorEvent.UNCAUGHT_ERROR, onCrash);
-			#end
+			removeEventListener(Event.ADDED_TO_STAGE, init);
 		}
 
-	var game:FlxGame;
-
-	public static var memoryCounter:Mem;
-	public static var display:SimpleInfoDisplay;
-
-	public static function toggleMem(memEnabled:Bool):Void
-	{
-		memoryCounter.visible = memEnabled;
+		setupGame();
 	}
-	public function toggleVers(enabled:Bool):Void
+
+	var video:Video;
+	var netStream:NetStream;
+	private var overlay:Sprite;
+
+	public static var fpsCounter:FPS;
+
+	private function setupGame():Void
+	{
+		var stageWidth:Int = Lib.current.stage.stageWidth;
+		var stageHeight:Int = Lib.current.stage.stageHeight;
+
+		if (zoom == -1)
 		{
-			display.infoDisplayed[2] = enabled;
-		}		
-	public function getFPS():Float
+			var ratioX:Float = stageWidth / gameWidth;
+			var ratioY:Float = stageHeight / gameHeight;
+			zoom = Math.min(ratioX, ratioY);
+			gameWidth = Math.ceil(stageWidth / zoom);
+			gameHeight = Math.ceil(stageHeight / zoom);
+		}
+
+		#if !debug
+		initialState = TitleState;
+		#end
+
+		addChild(new FlxGame(gameWidth, gameHeight, initialState, zoom, framerate, framerate, skipSplash, startFullscreen));
+
+		#if !mobile
+		fpsCounter = new FPS(10, 3, 0xFFFFFF);
+		addChild(fpsCounter);
+		#end
+		/* 
+			video = new Video();
+			addChild(video);
+
+			var netConnection = new NetConnection();
+			netConnection.connect(null);
+
+			netStream = new NetStream(netConnection);
+			netStream.client = {onMetaData: client_onMetaData};
+			netStream.addEventListener(AsyncErrorEvent.ASYNC_ERROR, netStream_onAsyncError);
+
+			#if (js && html5)
+			overlay = new Sprite();
+			overlay.graphics.beginFill(0, 0.5);
+			overlay.graphics.drawRect(0, 0, 560, 320);
+			overlay.addEventListener(MouseEvent.MOUSE_DOWN, overlay_onMouseDown);
+			overlay.buttonMode = true;
+			addChild(overlay);
+
+			netConnection.addEventListener(NetStatusEvent.NET_STATUS, netConnection_onNetStatus);
+			#else
+			netStream.play("assets/preload/music/dredd.mp4");
+			#end 
+		 */
+	}
+	/* 
+		private function client_onMetaData(metaData:Dynamic)
 		{
-			return fpsCounter.currentFPS;
-		}		
-}	
+			video.attachNetStream(netStream);
+
+			video.width = video.videoWidth;
+			video.height = video.videoHeight;
+		}
+
+		private function netStream_onAsyncError(event:AsyncErrorEvent):Void
+		{
+			trace("Error loading video");
+		}
+
+		private function netConnection_onNetStatus(event:NetStatusEvent):Void
+		{
+		}
+
+		private function overlay_onMouseDown(event:MouseEvent):Void
+		{
+			netStream.play("assets/preload/music/dredd.mp4");
+		}
+	 */
+}
