@@ -76,6 +76,7 @@ class PreferencesMenu extends Page
 		preferenceCheck('camera-zoom', true);
 		preferenceCheck('fps-counter', true);
 		preferenceCheck('auto-pause', false);
+		preferenceCheck('ghost-tap', true);
 		preferenceCheck('fps-plus', false);
 		preferenceCheck('freeplay-music', true);
 		preferenceCheck('master-volume', 1);

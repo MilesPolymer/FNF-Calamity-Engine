@@ -59,11 +59,12 @@ class FPS extends TextField
 		currentFPS = times.length;
 
 		text = "FPS: " + currentFPS;
+		text += "\n";
+		text += "Memory: " + Math.abs(Math.round(System.totalMemory / 1024 / 1024 * 100)/100) + " mb\n";
 
         if(ui.PreferencesMenu.developer_mode)
         {
 			text += "\n";
-            text += "Memory: " + Math.abs(Math.round(System.totalMemory / 1024 / 1024 * 100)/100) + " mb\n";
 			text += "Delta Time: " + (deltaTime / 1000) + " (" + (1 / (deltaTime / 1000)) + " fps)" + "\n";
 			text += "Current State: " + Type.getClassName(Type.getClass(FlxG.state)) + "\n";
 			text += "Max Texture Size: " + FlxG.bitmap.maxTextureSize + "\n";
