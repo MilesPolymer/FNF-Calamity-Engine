@@ -1,19 +1,16 @@
 package;
 
-import flixel.FlxG;
+import ui.PreferencesMenu;
+import shaderslmfao.ColorSwap;
 import flixel.FlxSprite;
 import flixel.graphics.frames.FlxAtlasFrames;
 import flixel.math.FlxMath;
 import flixel.util.FlxColor;
-import flixel.util.FlxTimer;
-import shaderslmfao.ColorSwap;
-import ui.PreferencesMenu;
-
-using StringTools;
-
 #if polymod
 import polymod.format.ParseRules.TargetSignatureElement;
 #end
+
+using StringTools;
 
 class Note extends FlxSprite
 {
@@ -24,26 +21,23 @@ class Note extends FlxSprite
 	public var canBeHit:Bool = false;
 	public var tooLate:Bool = false;
 	public var wasGoodHit:Bool = false;
-	public var prevNote:Note;
-
-	private var willMiss:Bool = false;
-
+	public var willMiss:Bool = false;
 	public var altNote:Bool = false;
-	public var invisNote:Bool = false;
+	public var prevNote:Note;
 
 	public var sustainLength:Float = 0;
 	public var isSustainNote:Bool = false;
 
-	public var colorSwap:ColorSwap;
-	public var noteScore:Float = 1;
-
+	var colorSwap:ColorSwap;
+	
 	public static var swagWidth:Float = 160 * 0.7;
+	public static var arrowColors = [1, 1, 1, 1];
 	public static var PURP_NOTE:Int = 0;
 	public static var GREEN_NOTE:Int = 2;
 	public static var BLUE_NOTE:Int = 1;
 	public static var RED_NOTE:Int = 3;
 
-	public static var arrowColors:Array<Float> = [1, 1, 1, 1];
+	public var raw_note:Array<Dynamic>;
 
 	public function new(strumTime:Float, noteData:Int, ?prevNote:Note, ?sustainNote:Bool = false)
 	{
@@ -62,109 +56,72 @@ class Note extends FlxSprite
 
 		this.noteData = noteData;
 
-		var daStage:String = PlayState.curStage;
-
-		switch (daStage)
+		switch (PlayState.curStage)
 		{
 			case 'school' | 'schoolEvil':
-				loadGraphic(Paths.image('weeb/pixelUI/arrows-pixels'), true, 17, 17);
-
-				animation.add('greenScroll', [6]);
-				animation.add('redScroll', [7]);
-				animation.add('blueScroll', [5]);
-				animation.add('purpleScroll', [4]);
-
 				if (isSustainNote)
-				{
 					loadGraphic(Paths.image('weeb/pixelUI/arrowEnds'), true, 7, 6);
+				else
+					loadGraphic(Paths.image('weeb/pixelUI/arrows-pixels'), true, 17, 17);
 
-					animation.add('purpleholdend', [4]);
-					animation.add('greenholdend', [6]);
-					animation.add('redholdend', [7]);
-					animation.add('blueholdend', [5]);
-
-					animation.add('purplehold', [0]);
-					animation.add('greenhold', [2]);
-					animation.add('redhold', [3]);
-					animation.add('bluehold', [1]);
+				switch(noteData % 4)
+				{
+					case 0:
+						animation.add('normal', [4]);
+						animation.add('held', [0]);
+						animation.add('end', [4]);
+					case 1:
+						animation.add('normal', [5]);
+						animation.add('held', [1]);
+						animation.add('end', [5]);
+					case 2:
+						animation.add('normal', [6]);
+						animation.add('held', [2]);
+						animation.add('end', [6]);
+					case 3:
+						animation.add('normal', [7]);
+						animation.add('held', [3]);
+						animation.add('end', [7]);
 				}
 
 				setGraphicSize(Std.int(width * PlayState.daPixelZoom));
 				updateHitbox();
-
 			default:
-				frames = Paths.getSparrowAtlas('NOTE_assets');
+				frames = Paths.getSparrowAtlas('default');
 
-				animation.addByPrefix('greenScroll', 'green instance');
-				animation.addByPrefix('redScroll', 'red instance');
-				animation.addByPrefix('blueScroll', 'blue instance');
-				animation.addByPrefix('purpleScroll', 'purple instance');
+				animation.addByPrefix('normal', ManiaBullshit.anims[PlayState.SONG.mania][noteData] + '0');
+				animation.addByPrefix('held', ManiaBullshit.anims[PlayState.SONG.mania][noteData] + ' hold0');
+				animation.addByPrefix('end', ManiaBullshit.anims[PlayState.SONG.mania][noteData] + ' hold end0');
 
-				animation.addByPrefix('purpleholdend', 'pruple end hold');
-				animation.addByPrefix('greenholdend', 'green hold end');
-				animation.addByPrefix('redholdend', 'red hold end');
-				animation.addByPrefix('blueholdend', 'blue hold end');
-
-				animation.addByPrefix('purplehold', 'purple hold piece');
-				animation.addByPrefix('greenhold', 'green hold piece');
-				animation.addByPrefix('redhold', 'red hold piece');
-				animation.addByPrefix('bluehold', 'blue hold piece');
-
-				setGraphicSize(Std.int(width * 0.7));
+				if(!isSustainNote)
+					setGraphicSize(Std.int(width * ManiaBullshit.noteSizes[PlayState.SONG.mania]));
+				else
+					setGraphicSize(Std.int(width * ManiaBullshit.noteSizes[PlayState.SONG.mania]), Std.int(height * ManiaBullshit.noteSizes[0]));
+				
 				updateHitbox();
 				antialiasing = true;
-
-				// colorSwap.colorToReplace = 0xFFF9393F;
-				// colorSwap.newColor = 0xFF00FF00;
-
-				// color = FlxG.random.color();
-				// color.saturation *= 4;
-				// replaceColor(0xFFC1C1C1, FlxColor.RED);
 		}
 
 		colorSwap = new ColorSwap();
 		shader = colorSwap.shader;
 		updateColors();
 
-		switch (noteData)
-		{
-			case 0:
-				x += swagWidth * 0;
-				animation.play('purpleScroll');
-			case 1:
-				x += swagWidth * 1;
-				animation.play('blueScroll');
-			case 2:
-				x += swagWidth * 2;
-				animation.play('greenScroll');
-			case 3:
-				x += swagWidth * 3;
-				animation.play('redScroll');
-		}
+		animation.play('normal');
 
 		// trace(prevNote);
 
 		if (isSustainNote && prevNote != null)
 		{
-			noteScore * 0.2;
 			alpha = 0.6;
 
 			if (PreferencesMenu.getPref('downscroll'))
+			{
 				angle = 180;
+			}
 
 			x += width / 2;
 
-			switch (noteData)
-			{
-				case 2:
-					animation.play('greenholdend');
-				case 3:
-					animation.play('redholdend');
-				case 1:
-					animation.play('blueholdend');
-				case 0:
-					animation.play('purpleholdend');
-			}
+			animation.play('end');
 
 			updateHitbox();
 
@@ -175,17 +132,7 @@ class Note extends FlxSprite
 
 			if (prevNote.isSustainNote)
 			{
-				switch (prevNote.noteData)
-				{
-					case 0:
-						prevNote.animation.play('purplehold');
-					case 1:
-						prevNote.animation.play('bluehold');
-					case 2:
-						prevNote.animation.play('greenhold');
-					case 3:
-						prevNote.animation.play('redhold');
-				}
+				prevNote.animation.play('held');
 
 				prevNote.scale.y *= Conductor.stepCrochet / 100 * 1.5 * PlayState.SONG.speed;
 				prevNote.updateHitbox();
@@ -194,7 +141,7 @@ class Note extends FlxSprite
 		}
 	}
 
-	public function updateColors():Void
+	function updateColors()
 	{
 		colorSwap.update(arrowColors[noteData]);
 	}
@@ -205,7 +152,6 @@ class Note extends FlxSprite
 
 		if (mustPress)
 		{
-			// miss on the NEXT frame so lag doesnt make u miss notes
 			if (willMiss && !wasGoodHit)
 			{
 				tooLate = true;
@@ -214,14 +160,14 @@ class Note extends FlxSprite
 			else
 			{
 				if (strumTime > Conductor.songPosition - Conductor.safeZoneOffset)
-				{ // The * 0.5 is so that it's easier to hit them too late, instead of too early
-					if (strumTime < Conductor.songPosition + (Conductor.safeZoneOffset * 0.5))
+				{
+					if (strumTime < Conductor.songPosition + 0.5 * Conductor.safeZoneOffset)
 						canBeHit = true;
 				}
 				else
 				{
-					canBeHit = true;
 					willMiss = true;
+					canBeHit = true;
 				}
 			}
 		}

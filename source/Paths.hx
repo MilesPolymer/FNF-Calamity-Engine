@@ -9,14 +9,14 @@ class Paths
 {
 	inline public static var SOUND_EXT = #if web "mp3" #else "ogg" #end;
 
-	static var currentLevel:String;
+	public static var currentLevel:String;
 
 	static public function setCurrentLevel(name:String)
 	{
 		currentLevel = name.toLowerCase();
 	}
 
-	static function getPath(file:String, type:AssetType, library:Null<String>)
+	static public function getPath(file:String, type:AssetType, library:Null<String>)
 	{
 		if (library != null)
 			return getLibraryPath(file, library);
@@ -24,10 +24,12 @@ class Paths
 		if (currentLevel != null)
 		{
 			var levelPath = getLibraryPathForce(file, currentLevel);
+
 			if (OpenFlAssets.exists(levelPath, type))
 				return levelPath;
 
 			levelPath = getLibraryPathForce(file, "shared");
+
 			if (OpenFlAssets.exists(levelPath, type))
 				return levelPath;
 		}
@@ -58,6 +60,11 @@ class Paths
 	inline static public function txt(key:String, ?library:String)
 	{
 		return getPath('data/$key.txt', TEXT, library);
+	}
+
+	inline static public function hx(key:String, ?library:String)
+	{
+		return getPath('$key.hx', TEXT, library);
 	}
 
 	inline static public function xml(key:String, ?library:String)
@@ -103,6 +110,11 @@ class Paths
 	inline static public function font(key:String)
 	{
 		return 'assets/fonts/$key';
+	}
+
+	inline static public function video(key:String, ?library:String)
+	{
+		return getPath('music/$key.mp4', TEXT, library);
 	}
 
 	inline static public function getSparrowAtlas(key:String, ?library:String)

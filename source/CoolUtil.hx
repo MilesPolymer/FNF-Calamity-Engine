@@ -1,14 +1,6 @@
 package;
 
 import flixel.FlxG;
-import flixel.graphics.FlxGraphic;
-import flixel.graphics.frames.FlxAtlasFrames;
-import flixel.math.FlxMath;
-import flixel.math.FlxPoint;
-import flixel.math.FlxRect;
-import flixel.system.FlxAssets.FlxGraphicAsset;
-import haxe.Json;
-import lime.math.Rectangle;
 import lime.utils.Assets;
 
 using StringTools;
@@ -44,23 +36,63 @@ class CoolUtil
 		return dumbArray;
 	}
 
-	/**
-		Lerps camera, but accountsfor framerate shit?
-		Right now it's simply for use to change the followLerp variable of a camera during update
-		TODO LATER MAYBE:
-			Actually make and modify the scroll and lerp shit in it's own function
-			instead of solely relying on changing the lerp on the fly
-	 */
-	public static function camLerpShit(lerp:Float):Float
+	public static function camLerpShit(ratio:Float)
 	{
-		return lerp * (FlxG.elapsed / (1 / 60));
+		return FlxG.elapsed / (1 / 60) * ratio;
 	}
 
-	/*
-	* just lerp that does camLerpShit for u so u dont have to do it every time
-	*/
-	public static function coolLerp(a:Float, b:Float, ratio:Float):Float
+	public static function coolLerp(a:Float, b:Float, ratio:Float)
 	{
-		return FlxMath.lerp(a, b, camLerpShit(ratio));
+		return a + camLerpShit(ratio) * (b - a);
+	}
+
+	inline public static function boundTo(value:Float, min:Float, max:Float):Float {
+		return Math.max(min, Math.min(max, value));
+	}
+
+	// stolen from psych lmao cuz i'm lazy
+	public static function dominantColor(sprite:flixel.FlxSprite):Int
+	{
+		var countByColor:Map<Int, Int> = [];
+
+		for(col in 0...sprite.frameWidth)
+		{
+			for(row in 0...sprite.frameHeight)
+			{
+				var colorOfThisPixel:Int = sprite.pixels.getPixel32(col, row);
+
+				if(colorOfThisPixel != 0){
+					if(countByColor.exists(colorOfThisPixel))
+						countByColor[colorOfThisPixel] =  countByColor[colorOfThisPixel] + 1;
+					else if(countByColor[colorOfThisPixel] != 13520687 - (2*13520687))
+						countByColor[colorOfThisPixel] = 1;
+				}
+			}
+		}
+
+		var maxCount = 0;
+		var maxKey:Int = 0; // after the loop this will store the max color
+
+		countByColor[flixel.util.FlxColor.BLACK] = 0;
+
+		for(key in countByColor.keys())
+		{
+			if(countByColor[key] >= maxCount)
+			{
+				maxCount = countByColor[key];
+				maxKey = key;
+			}
+		}
+
+		return maxKey;
+	}
+
+	public static function openURL(url:String)
+	{
+		#if linux
+		Sys.command('/usr/bin/xdg-open', [url]);
+		#else
+		FlxG.openURL(url);
+		#end
 	}
 }

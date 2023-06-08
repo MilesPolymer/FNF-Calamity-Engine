@@ -2,11 +2,10 @@ package;
 
 import flixel.FlxG;
 import flixel.FlxSprite;
-import haxe.io.Path;
 
 class NoteSplash extends FlxSprite
 {
-	public function new(x:Float, y:Float, noteData:Int = 0):Void
+	public function new(x:Float, y:Float, ?notedata:Int = 0)
 	{
 		super(x, y);
 
@@ -21,28 +20,34 @@ class NoteSplash extends FlxSprite
 		animation.addByPrefix('note0-1', 'note impact 2 purple', 24, false);
 		animation.addByPrefix('note3-1', 'note impact 2 red', 24, false);
 
-		setupNoteSplash(x, y, noteData);
-
-		// alpha = 0.75;
+		setupNoteSplash(x, y, notedata);
 	}
 
-	public function setupNoteSplash(x:Float, y:Float, noteData:Int = 0)
+	public function setupNoteSplash(x:Float, y:Float, ?notedata:Int = 0)
 	{
 		setPosition(x, y);
+
 		alpha = 0.6;
 
-		animation.play('note' + noteData + '-' + FlxG.random.int(0, 1), true);
-		animation.curAnim.frameRate += FlxG.random.int(-2, 2);
+		animation.play('note' + (notedata % 4) + '-' + FlxG.random.int(0, 1), true);
+
+		animation.curAnim.frameRate = 24 + FlxG.random.int(-2, 2);
+
 		updateHitbox();
 
-		offset.set(width * 0.3, height * 0.3);
+		scale.x = 1 - (0.7 - ManiaBullshit.noteSizes[PlayState.SONG.mania]);
+		scale.y = 1 - (0.7 - ManiaBullshit.noteSizes[PlayState.SONG.mania]);
+
+		updateHitbox();
+		
+		offset.set(width * (1 - ManiaBullshit.noteSizes[PlayState.SONG.mania]), height * (1 - ManiaBullshit.noteSizes[PlayState.SONG.mania]));
 	}
 
-	override function update(elapsed:Float)
+	override public function update(elapsed:Float)
 	{
 		if (animation.curAnim.finished)
 			kill();
-
+		
 		super.update(elapsed);
 	}
 }

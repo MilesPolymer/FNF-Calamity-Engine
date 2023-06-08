@@ -1,17 +1,23 @@
 {
     "dependencies": [
         {
+            "name": "hxcpp-debug-server", "type": "haxelib", "version": null
+        },
+        {
             "name": "hxcpp", "type": "haxelib", "version": null
         },     
         {
+            "name": "polymod", "type": "haxelib", "version": "1.5.3"
+        },
+        {
             "name": "flixel", "type": "haxelib", "version": null
-        }, 
+        },  
+        {
+            "name": "flixel-addons", "type": "haxelib", "version": null
+        },  
         {
             "name": "flixel-ui", "type": "haxelib", "version": null
         },  
-        {
-            "name": "flixel-addons", "type": "haxelib", "version": "3.0.2"
-        },                
         {
             "name": "format", "type": "haxelib", "version": null
         },
@@ -19,8 +25,14 @@
             "name": "hscript", "type": "haxelib", "version": null
         }, 
         {
+            "name": "away3d", "type": "haxelib", "version": null
+        }, 
+        {
             "name": "hxCodec", "type": "haxelib", "version": null
-        },                     
+        },
+        {
+            "name": "markdown", "type": "haxelib", "version": null
+        },                        
         {
             "name": "hscript-improved", "type": "git", "dir": "hscript-improved", "ref": "custom-classes", "url": "https://www.github.com/FNF-CNE-Devs/hscript-improved"
         },
@@ -33,6 +45,9 @@
         {
             "name": "linc_discord-rpc", "type": "git", "dir": "discord_rpc", "ref": "master", "url": "https://github.com/Aidan63/linc_discord-rpc"
         },
+        {
+            "name": "linc_luajit", "type": "git", "dir": "linc_luajit", "ref": "master", "url": "https://github.com/nebulazorua/linc_luajit.git"
+        },        
         {
             "name": "openfl", "type": "git", "dir": "openfl", "ref": "master", "url": "https://github.com/openfl/openfl"
         },

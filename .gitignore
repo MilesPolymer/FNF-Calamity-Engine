@@ -1,9 +1,3 @@
-#VS Code
 export/
 .vscode/
-
-#HaxeLib
-/.haxelib
-
-.DS_Store
-desktop.ini
+.haxelib/

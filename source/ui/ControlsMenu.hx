@@ -1,229 +1,213 @@
 package ui;
 
-import Controls;
+import flixel.input.gamepad.FlxGamepadInputID;
+import flixel.input.gamepad.FlxGamepad;
+import Controls.Control;
+import Controls.Device;
 import flixel.FlxCamera;
 import flixel.FlxG;
 import flixel.FlxObject;
 import flixel.FlxSprite;
-import flixel.group.FlxGroup;
-import flixel.input.actions.FlxActionInput;
-import flixel.input.gamepad.FlxGamepadInputID;
-import flixel.input.keyboard.FlxKey;
-import ui.AtlasText;
-import ui.MenuList;
-import ui.TextMenuList;
+import flixel.group.FlxGroup.FlxTypedGroup;
+import flixel.util.FlxColor;
 
-class ControlsMenu extends ui.OptionsState.Page
+class ControlsMenu extends Page
 {
-	inline static public var COLUMNS = 2;
-	static var controlList = Control.createAll();
-	/*
-	 * Defines groups of controls that cannot share inputs, like left and right. Say, if ACCEPT is Z, Back is X,
-	 * if the player sets Back to Z it also set ACCEPT to X. This prevents the player from setting the controls in
-	 * a way the prevents them from changing more controls or exiting the menu.
-	 */
-	static var controlGroups:Array<Array<Control>> = [
-		[NOTE_UP, NOTE_DOWN, NOTE_LEFT, NOTE_RIGHT],
-		[UI_UP, UI_DOWN, UI_LEFT, UI_RIGHT, ACCEPT, BACK]
-	];
+	public static var controlList:Array<Control> = Control.createAll();
+	public static var controlGroups:Array<Array<Control>> = [[NOTE_UP, NOTE_DOWN, NOTE_LEFT, NOTE_RIGHT], [UI_UP, UI_DOWN, UI_LEFT, UI_RIGHT, ACCEPT, BACK]];
 
-	var itemGroups:Array<Array<InputItem>> = [for (i in 0...controlGroups.length) []];
-
-	var controlGrid:MenuTypedList<InputItem>;
+	var currentDevice:Device = Device.Keys;
 	var deviceList:TextMenuList;
+	var deviceListSelected:Bool = false;
+	var controlGrid:MenuTypedList<InputItem>;
+	var itemGroups:Array<Array<InputItem>>;
 	var menuCamera:FlxCamera;
-	var prompt:Prompt;
 	var camFollow:FlxObject;
 	var labels:FlxTypedGroup<AtlasText>;
+	var prompt:Prompt;
 
-	var currentDevice:Device = Keys;
-	var deviceListSelected = false;
-
-	public function new()
+	override public function new()
 	{
+		var array:Array<Array<InputItem>> = [];
+		for (i in 0...controlGroups.length)
+		{
+			array.push([]);
+		}
+		itemGroups = array;
 		super();
-
 		menuCamera = new FlxCamera();
 		FlxG.cameras.add(menuCamera, false);
-		menuCamera.bgColor = 0x0;
+		menuCamera.bgColor = FlxColor.TRANSPARENT;
 		camera = menuCamera;
-
 		labels = new FlxTypedGroup<AtlasText>();
-		var headers = new FlxTypedGroup<AtlasText>();
-		controlGrid = new MenuTypedList(Columns(COLUMNS), Vertical);
-
+		var grpText:FlxTypedGroup<AtlasText> = new FlxTypedGroup<AtlasText>();
+		controlGrid = new MenuTypedList(Columns(2), Vertical);
 		add(labels);
-		add(headers);
+		add(grpText);
 		add(controlGrid);
-
 		if (FlxG.gamepads.numActiveGamepads > 0)
 		{
-			var devicesBg = new FlxSprite();
-			devicesBg.makeGraphic(FlxG.width, 100, 0xFFfafd6d);
-			add(devicesBg);
+			var spr:FlxSprite = new FlxSprite();
+			spr.makeGraphic(FlxG.width, 100, 0xFFFAFD6D);
+			add(spr);
 			deviceList = new TextMenuList(Horizontal, None);
 			add(deviceList);
 			deviceListSelected = true;
-
-			var item;
-
-			item = deviceList.createItem("Keyboard", Bold, selectDevice.bind(Keys));
-			item.x = FlxG.width / 2 - item.width - 30;
-			item.y = (devicesBg.height - item.height) / 2;
-
-			item = deviceList.createItem("Gamepad", Bold, selectDevice.bind(Gamepad(FlxG.gamepads.firstActive.id)));
-			item.x = FlxG.width / 2 + 30;
-			item.y = (devicesBg.height - item.height) / 2;
+			var kbItem:TextMenuItem = deviceList.createItem(null, null, 'Keyboard', Bold, function()
+			{
+				selectDevice(Device.Keys);
+			});
+			kbItem.x = FlxG.width / 2 - kbItem.width - 30;
+			kbItem.y = (spr.height - kbItem.height) / 2;
+			var gpItem:TextMenuItem = deviceList.createItem(null, null, 'Gamepad', Bold, function()
+			{
+				selectDevice(Device.Gamepad(FlxG.gamepads.firstActive.id));
+			});
+			gpItem.x = FlxG.width / 2 + 30;
+			gpItem.y = (spr.height - gpItem.height) / 2;
 		}
-
-		// FlxG.debugger.drawDebug = true;
-		var y = deviceList == null ? 30 : 120;
-		var spacer = 70;
-		var currentHeader:String = null;
-		// list order is determined by enum order
-		for (i in 0...controlList.length)
+		var ypos:Int = (deviceList == null) ? 30 : 120;
+		var curSection:String = null;
+		for (ctrl in controlList)
 		{
-			var control = controlList[i];
-			var name = control.getName();
-			if (currentHeader != "UI_" && name.indexOf("UI_") == 0)
+			var name:String = ctrl.getName();
+			if (curSection != 'UI_' && name.indexOf('UI_') == 0)
 			{
-				currentHeader = "UI_";
-				headers.add(new BoldText(0, y, "UI")).screenCenter(X);
-				y += spacer;
+				curSection = 'UI_';
+				var sectionText:AtlasText = new AtlasText(0, ypos, 'UI', Bold);
+				grpText.add(sectionText).screenCenter(X);
+				ypos += 70;
 			}
-			else if (currentHeader != "NOTE_" && name.indexOf("NOTE_") == 0)
+			else if (curSection != 'NOTE_' && name.indexOf('NOTE_') == 0)
 			{
-				currentHeader = "NOTE_";
-				headers.add(new BoldText(0, y, "NOTES")).screenCenter(X);
-				y += spacer;
+				curSection = 'NOTE_';
+				var sectionText:AtlasText = new AtlasText(0, ypos, 'NOTES', Bold);
+				grpText.add(sectionText).screenCenter(X);
+				ypos += 70;
 			}
-
-			if (currentHeader != null && name.indexOf(currentHeader) == 0)
-				name = name.substr(currentHeader.length);
-
-			var label = labels.add(new BoldText(150, y, name));
-			label.alpha = 0.6;
-			for (i in 0...COLUMNS)
-				createItem(label.x + 400 + i * 300, y, control, i);
-
-			y += spacer;
+			if (curSection != null && name.indexOf(curSection) == 0)
+			{
+				name = name.substr(curSection.length);
+			}
+			var text:AtlasText = new AtlasText(150, ypos, name, Bold);
+			text = labels.add(text);
+			text.alpha = 0.6;
+			createItem(text.x + 400, ypos, ctrl, 0);
+			createItem(text.x + 400 + 300, ypos, ctrl, 1);
+			ypos += 70;
 		}
-
 		camFollow = new FlxObject(FlxG.width / 2, 0, 70, 70);
 		if (deviceList != null)
 		{
-			camFollow.y = deviceList.selectedItem.y;
-			controlGrid.selectedItem.idle();
+			camFollow.y = deviceList.members[deviceList.selectedIndex].y;
+			controlGrid.members[controlGrid.selectedIndex].idle();
 			controlGrid.enabled = false;
 		}
 		else
-			camFollow.y = controlGrid.selectedItem.y;
-
-		menuCamera.follow(camFollow, null, 0.06);
-		var margin = 100;
-		menuCamera.deadzone.set(0, margin, menuCamera.width, menuCamera.height - margin * 2);
-		menuCamera.minScrollY = 0;
-		controlGrid.onChange.add(function(selected)
 		{
-			camFollow.y = selected.y;
-
-			labels.forEach((label) -> label.alpha = 0.6);
-			labels.members[Std.int(controlGrid.selectedIndex / COLUMNS)].alpha = 1.0;
+			camFollow.y = controlGrid.members[controlGrid.selectedIndex].y;
+		}
+		menuCamera.follow(camFollow, null, 0.06);
+		menuCamera.deadzone.set(0, 100, menuCamera.width, menuCamera.height - 200);
+		menuCamera.minScrollY = 0;
+		controlGrid.onChange.add(function(item:InputItem)
+		{
+			camFollow.y = item.y;
+			labels.forEach(function(text:AtlasText)
+			{
+				text.alpha = 0.6;
+			});
+			labels.members[Std.int(controlGrid.selectedIndex / 2)].alpha = 1;
 		});
-
-		prompt = new Prompt("\nPress any key to rebind\n\n\n\n    Escape to cancel", None);
+		prompt = new Prompt('\nPress any key to rebind\n\n\n\n    Escape to cancel', None);
 		prompt.create();
-		prompt.createBgFromMargin(100, 0xFFfafd6d);
+		prompt.createBgFromMargin(100, 0xFFFAFD6D);
 		prompt.back.scrollFactor.set(0, 0);
 		prompt.exists = false;
 		add(prompt);
 	}
 
-	function createItem(x = 0.0, y = 0.0, control:Control, index:Int)
+	function createItem(?x:Float = 0, ?y:Float = 0, control:Control, index:Int)
 	{
-		var item = new InputItem(x, y, currentDevice, control, index, onSelect);
+		var item:InputItem = new InputItem(x, y, currentDevice, control, index, onSelect);
 		for (i in 0...controlGroups.length)
 		{
 			if (controlGroups[i].contains(control))
 				itemGroups[i].push(item);
 		}
-
 		return controlGrid.addItem(item.name, item);
 	}
 
-	function onSelect():Void
+	function onSelect()
 	{
-		controlGrid.enabled = false;
 		canExit = false;
+		controlGrid.enabled = false;
 		prompt.exists = true;
 	}
 
 	function goToDeviceList()
 	{
-		controlGrid.selectedItem.idle();
-		labels.members[Std.int(controlGrid.selectedIndex / COLUMNS)].alpha = 0.6;
+		controlGrid.members[controlGrid.selectedIndex].idle();
+		labels.members[Std.int(controlGrid.selectedIndex / 2)].alpha = 0.6;
 		controlGrid.enabled = false;
-		deviceList.enabled = true;
 		canExit = true;
-		camFollow.y = deviceList.selectedItem.y;
+		deviceList.enabled = true;
+		camFollow.y = deviceList.members[deviceList.selectedIndex].y;
 		deviceListSelected = true;
 	}
 
-	function selectDevice(device:Device)
+	function selectDevice(dev:Device)
 	{
-		currentDevice = device;
-
+		currentDevice = dev;
 		for (item in controlGrid.members)
+		{
 			item.updateDevice(currentDevice);
-
-		var inputName = device == Keys ? "key" : "button";
-		var cancel = device == Keys ? "Escape" : "Back";
-		// todo: alignment
-		if (device == Keys)
-			prompt.setText('\nPress any key to rebind\n\n\n\n    $cancel to cancel');
+		}
+		var cancelBtn:String = dev == Device.Keys ? 'Escape' : 'Back';
+		if (dev == Device.Keys)
+		{
+			prompt.setText('\nPress any key to rebind\n\n\n\n    ' + cancelBtn + ' to cancel');
+		}
 		else
-			prompt.setText('\nPress any button\n   to rebind\n\n\n $cancel to cancel');
-
-		controlGrid.selectedItem.select();
-		labels.members[Std.int(controlGrid.selectedIndex / COLUMNS)].alpha = 1.0;
+		{
+			prompt.setText('\nPress any button\n   to rebind\n\n\n ' + cancelBtn + ' to cancel');
+		}
+		controlGrid.members[controlGrid.selectedIndex].select();
+		labels.members[Std.int(controlGrid.selectedIndex / 2)].alpha = 1;
 		controlGrid.enabled = true;
-		deviceList.enabled = false;
-		deviceListSelected = false;
 		canExit = false;
+		deviceListSelected = false;
+		deviceList.enabled = false;
 	}
 
 	override function update(elapsed:Float)
 	{
 		super.update(elapsed);
-
 		var controls = PlayerSettings.player1.controls;
 		if (controlGrid.enabled && deviceList != null && deviceListSelected == false && controls.BACK)
+		{
 			goToDeviceList();
-
+		}
 		if (prompt.exists)
 		{
 			switch (currentDevice)
 			{
 				case Keys:
+					var released:Int = FlxG.keys.firstJustReleased();
+					if (released != -1)
 					{
-						// check released otherwise bugs can happen when you change the BACK key
-						var key = FlxG.keys.firstJustReleased();
-						if (key != NONE)
-						{
-							if (key != ESCAPE)
-								onInputSelect(key);
-							closePrompt();
-						}
+						if (released != 27)
+							onInputSelect(released);
+						closePrompt();
 					}
 				case Gamepad(id):
+					var pad:FlxGamepad = FlxG.gamepads.getByID(id);
+					var released:FlxGamepadInputID = pad.mapping.getID(pad.firstJustReleasedRawID());
+					if (released != -1)
 					{
-						var button = FlxG.gamepads.getByID(id).firstJustReleasedID();
-						if (button != NONE)
-						{
-							if (button != BACK)
-								onInputSelect(button);
-							closePrompt();
-						}
+						if (released != 6)
+							onInputSelect(released);
+						closePrompt();
 					}
 			}
 		}
@@ -231,41 +215,30 @@ class ControlsMenu extends ui.OptionsState.Page
 
 	function onInputSelect(input:Int)
 	{
-		var item = controlGrid.selectedItem;
-
-		// check if that key is already set for this
-		var column0 = Math.floor(controlGrid.selectedIndex / 2) * 2;
-		for (i in 0...COLUMNS)
+		var selected:InputItem = controlGrid.members[controlGrid.selectedIndex];
+		var index:Int = 2 * Math.floor(controlGrid.selectedIndex / 2);
+		if (controlGrid.members[index].input != input && controlGrid.members[index + 1].input != input)
 		{
-			if (controlGrid.members[column0 + i].input == input)
-				return;
-		}
-
-		// Check if items in the same group already have the new input
-		for (group in itemGroups)
-		{
-			if (group.contains(item))
+			for (group in itemGroups)
 			{
-				for (otherItem in group)
+				if (group.contains(selected))
 				{
-					if (otherItem != item && otherItem.input == input)
+					for (item in group)
 					{
-						// replace that input with this items old input.
-						PlayerSettings.player1.controls.replaceBinding(otherItem.control, currentDevice, item.input, otherItem.input);
-						// Don't use resetItem() since items share names/labels
-						otherItem.input = item.input;
-						otherItem.label.text = item.label.text;
+						if (item != selected && item.input == input)
+						{
+							PlayerSettings.player1.controls.replaceBinding(item.control, currentDevice, selected.input, item.input);
+							item.input = selected.input;
+							item.label.text = selected.label.text;
+						}
 					}
 				}
 			}
+			PlayerSettings.player1.controls.replaceBinding(selected.control, currentDevice, input, selected.input);
+			selected.input = input;
+			selected.label.text = selected.getLabel(input);
+			PlayerSettings.player1.saveControls();
 		}
-
-		PlayerSettings.player1.controls.replaceBinding(item.control, currentDevice, input, item.input);
-		// Don't use resetItem() since items share names/labels
-		item.input = input;
-		item.label.text = item.getLabel(input);
-
-		PlayerSettings.player1.saveControls();
 	}
 
 	function closePrompt()
@@ -273,82 +246,37 @@ class ControlsMenu extends ui.OptionsState.Page
 		prompt.exists = false;
 		controlGrid.enabled = true;
 		if (deviceList == null)
+		{
 			canExit = true;
+		}
 	}
 
-	override function destroy()
+	override public function destroy()
 	{
 		super.destroy();
-
 		itemGroups = null;
-
 		if (FlxG.cameras.list.contains(menuCamera))
 			FlxG.cameras.remove(menuCamera);
 	}
 
-	override function set_enabled(value:Bool)
+	override function set_enabled(state:Bool)
 	{
-		if (value == false)
+		if (state == false)
 		{
 			controlGrid.enabled = false;
 			if (deviceList != null)
+			{
 				deviceList.enabled = false;
+			}
 		}
 		else
 		{
 			controlGrid.enabled = !deviceListSelected;
 			if (deviceList != null)
+			{
 				deviceList.enabled = deviceListSelected;
+			}
 		}
-		return super.set_enabled(value);
-	}
-}
-
-class InputItem extends TextMenuItem
-{
-	public var device(default, null):Device = Keys;
-	public var control:Control;
-	public var input:Int = -1;
-	public var index:Int = -1;
-
-	public function new(x = 0.0, y = 0.0, device, control, index, ?callback)
-	{
-		this.device = device;
-		this.control = control;
-		this.index = index;
-		this.input = getInput();
-
-		super(x, y, getLabel(input), Default, callback);
-	}
-
-	public function updateDevice(device:Device)
-	{
-		if (this.device != device)
-		{
-			this.device = device;
-			input = getInput();
-			label.text = getLabel(input);
-		}
-	}
-
-	function getInput()
-	{
-		var list = PlayerSettings.player1.controls.getInputsFor(control, device);
-		if (list.length > index)
-		{
-			if (list[index] != FlxKey.ESCAPE || list[index] != FlxGamepadInputID.BACK)
-				return list[index];
-
-			if (list.length > ControlsMenu.COLUMNS)
-				// Escape isn't mappable, show a third option, instead.
-				return list[ControlsMenu.COLUMNS];
-		}
-
-		return -1;
-	}
-
-	public function getLabel(input:Int)
-	{
-		return input == -1 ? "---" : InputFormatter.format(input, device);
+		return super.set_enabled(state);
 	}
 }

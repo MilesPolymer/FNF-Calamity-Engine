@@ -1,54 +1,55 @@
 package;
 
-import flixel.FlxG;
+import openfl.Lib;
 import openfl.display.Sprite;
-import openfl.events.AsyncErrorEvent;
-import openfl.events.MouseEvent;
-import openfl.events.NetStatusEvent;
-import openfl.media.Video;
 import openfl.net.NetConnection;
+import openfl.media.Video;
 import openfl.net.NetStream;
+import flixel.FlxG;
 
 class VideoState extends MusicBeatState
 {
-	var video:Video;
-	var netStream:NetStream;
-	private var overlay:Sprite;
-
 	public static var seenVideo:Bool = false;
+
+	#if web
+	private var video:Video;
+	private var netStream:NetStream;
+	private var overlay:Sprite;
+	#end
 
 	override function create()
 	{
 		super.create();
 
 		seenVideo = true;
-
 		FlxG.save.data.seenVideo = true;
 		FlxG.save.flush();
 
 		if (FlxG.sound.music != null)
+		{
 			FlxG.sound.music.stop();
+		}
 
+		#if web
 		video = new Video();
 		FlxG.addChildBelowMouse(video);
 
-		var netConnection = new NetConnection();
+		var netConnection:NetConnection = new NetConnection();
 		netConnection.connect(null);
-
 		netStream = new NetStream(netConnection);
 		netStream.client = {onMetaData: client_onMetaData};
-		netStream.addEventListener(AsyncErrorEvent.ASYNC_ERROR, netStream_onAsyncError);
-		netConnection.addEventListener(NetStatusEvent.NET_STATUS, netConnection_onNetStatus);
-		// netStream.addEventListener(NetStatusEvent.NET_STATUS);
-		netStream.play(Paths.file('music/kickstarterTrailer.mp4'));
+		netStream.addEventListener('asyncError', netStream_onAsyncError);
+		netConnection.addEventListener('netStatus', netConnection_onNetStatus);
+		netStream.play(Paths.video('kickstarterTrailer'));
 
 		overlay = new Sprite();
 		overlay.graphics.beginFill(0, 0.5);
 		overlay.graphics.drawRect(0, 0, 1280, 720);
-		overlay.addEventListener(MouseEvent.MOUSE_DOWN, overlay_onMouseDown);
-
+		overlay.addEventListener('mouseDown', overlay_onMouseDown);
 		overlay.buttonMode = true;
-		// FlxG.stage.addChild(overlay);
+		#else
+		finishVid(); // fallback for other targets
+		#end
 	}
 
 	override function update(elapsed:Float)
@@ -59,45 +60,45 @@ class VideoState extends MusicBeatState
 		super.update(elapsed);
 	}
 
-	function finishVid():Void
+	private function finishVid()
 	{
+		#if web
 		netStream.dispose();
-		FlxG.removeChild(video);
+		if (FlxG.game.contains(video))
+			FlxG.game.removeChild(video);
+		#end
 
 		TitleState.initialized = false;
 		FlxG.switchState(new TitleState());
 	}
 
-	private function client_onMetaData(metaData:Dynamic)
+	#if web
+	private function client_onMetaData(e)
 	{
 		video.attachNetStream(netStream);
-
 		video.width = video.videoWidth;
 		video.height = video.videoHeight;
-		// video.
 	}
 
-	private function netStream_onAsyncError(event:AsyncErrorEvent):Void
+	private function netStream_onAsyncError(e)
 	{
-		trace("Error loading video");
+		trace('Error loading video');
 	}
 
-	private function netConnection_onNetStatus(event:NetStatusEvent):Void
+	private function netConnection_onNetStatus(e)
 	{
-		if (event.info.code == 'NetStream.Play.Complete')
+		if (e.info.code == 'NetStream.Play.Complete')
 		{
 			finishVid();
 		}
-
-		trace(event.toString());
+		trace(e.toString());
 	}
 
-	private function overlay_onMouseDown(event:MouseEvent):Void
+	private function overlay_onMouseDown(e)
 	{
 		netStream.soundTransform.volume = 0.2;
 		netStream.soundTransform.pan = -1;
-		// netStream.play(Paths.file('music/kickstarterTrailer.mp4'));
-
-		FlxG.stage.removeChild(overlay);
+		Lib.current.stage.removeChild(overlay);
 	}
+	#end
 }

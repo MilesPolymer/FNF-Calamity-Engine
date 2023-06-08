@@ -1,33 +1,34 @@
 package ui;
 
-import flixel.FlxCamera;
+import openfl.Lib;
 import flixel.FlxG;
 import flixel.FlxObject;
-import flixel.FlxSprite;
-import flixel.group.FlxGroup;
+import flixel.FlxCamera;
 import flixel.util.FlxColor;
-import ui.AtlasText.AtlasFont;
-import ui.TextMenuList.TextMenuItem;
+import haxe.ds.StringMap;
 
-class PreferencesMenu extends ui.OptionsState.Page
+class PreferencesMenu extends Page
 {
-	public static var preferences:Map<String, Dynamic> = new Map();
-
-	var items:TextMenuList;
+	public static var preferences:StringMap<Dynamic> = new StringMap<Dynamic>();
 
 	var checkboxes:Array<CheckboxThingie> = [];
 	var menuCamera:FlxCamera;
+	var items:TextMenuList;
 	var camFollow:FlxObject;
 
-	public function new()
+	#if debug
+	public static var developer_mode:Bool = true;
+	#else
+	public static var developer_mode:Bool = false;
+	#end
+
+	override public function new()
 	{
 		super();
-
-		menuCamera = new SwagCamera();
+		menuCamera = new FlxCamera();
 		FlxG.cameras.add(menuCamera, false);
-		menuCamera.bgColor = 0x0;
+		menuCamera.bgColor = FlxColor.TRANSPARENT;
 		camera = menuCamera;
-
 		add(items = new TextMenuList());
 
 		createPrefItem('naughtyness', 'censor-naughty', true);
@@ -36,183 +37,142 @@ class PreferencesMenu extends ui.OptionsState.Page
 		createPrefItem('Camera Zooming on Beat', 'camera-zoom', true);
 		createPrefItem('FPS Counter', 'fps-counter', true);
 		createPrefItem('Auto Pause', 'auto-pause', false);
+		createPrefItem('Unlimited FPS', 'fps-plus', false);
+		createPrefItem('Freeplay Music', 'freeplay-music', true);
+		createPrefItem("Freeplay Cutscenes", 'freeplay-cutscenes', false);
+		createPrefItem("One Lane", 'one-lane', false);
 
 		camFollow = new FlxObject(FlxG.width / 2, 0, 140, 70);
+		
 		if (items != null)
-			camFollow.y = items.selectedItem.y;
-
-		menuCamera.follow(camFollow, null, 0.06);
-		var margin = 160;
-		menuCamera.deadzone.set(0, margin, menuCamera.width, 40);
-		menuCamera.minScrollY = 0;
-
-		items.onChange.add(function(selected)
 		{
-			camFollow.y = selected.y;
+			camFollow.y = items.members[items.selectedIndex].y;
+		}
+		menuCamera.follow(camFollow, null, 0.06);
+		menuCamera.deadzone.set(0, 160, menuCamera.width, 40);
+		menuCamera.minScrollY = 0;
+		items.onChange.add(function(item:TextMenuItem)
+		{
+			camFollow.y = item.y;
 		});
 	}
 
-	public static function getPref(pref:String):Dynamic
+	public static function getPref(pref:String)
 	{
 		return preferences.get(pref);
 	}
 
-	// easy shorthand?
-	public static function setPref(pref:String, value:Dynamic):Void
+	public static function initPrefs()
 	{
-		preferences.set(pref, value);
-	}
+		if(!preferences.exists("downscroll"))
+		{
+			if(FlxG.save.data.preferences != null)
+				preferences = FlxG.save.data.preferences;
+		}
 
-	public static function initPrefs():Void
-	{
 		preferenceCheck('censor-naughty', true);
 		preferenceCheck('downscroll', false);
 		preferenceCheck('flashing-menu', true);
 		preferenceCheck('camera-zoom', true);
 		preferenceCheck('fps-counter', true);
 		preferenceCheck('auto-pause', false);
+		preferenceCheck('fps-plus', false);
+		preferenceCheck('freeplay-music', true);
 		preferenceCheck('master-volume', 1);
-
-		#if muted
-		setPref('master-volume', 0);
-		FlxG.sound.muted = true;
-		#end
+		preferenceCheck('freeplay-cutscenes', false);
+		preferenceCheck('one-lane', false);
 
 		if (!getPref('fps-counter'))
-			FlxG.stage.removeChild(Main.fpsCounter);
+		{
+			Lib.current.stage.removeChild(Main.fpsCounter);
+		}
 
 		FlxG.autoPause = getPref('auto-pause');
+
+		FlxG.save.data.preferences = preferences;
+		FlxG.save.flush();
 	}
 
-	private function createPrefItem(prefName:String, prefString:String, prefValue:Dynamic):Void
+	public static function preferenceCheck(identifier:String, defaultValue:Dynamic)
 	{
-		items.createItem(120, (120 * items.length) + 30, prefName, AtlasFont.Bold, function()
+		if (preferences.get(identifier) == null)
 		{
-			preferenceCheck(prefString, prefValue);
+			preferences.set(identifier, defaultValue);
+			trace('set preference!');
 
-			switch (Type.typeof(prefValue).getName())
+			FlxG.save.data.preferences = preferences;
+			FlxG.save.flush();
+		}
+		else
+		{
+			trace('found preference: ' + Std.string(preferences.get(identifier)));
+		}
+	}
+
+	public function createPrefItem(label:String, identifier:String, value:Dynamic)
+	{
+		items.createItem(120, 120 * items.length + 30, label, Bold, function()
+		{
+			preferenceCheck(identifier, value);
+			if (Type.typeof(value) == TBool)
 			{
-				case 'TBool':
-					prefToggle(prefString);
-
-				default:
-					trace('swag');
+				prefToggle(identifier);
+			}
+			else
+			{
+				trace('swag');
 			}
 		});
-
-		switch (Type.typeof(prefValue).getName())
+		if (Type.typeof(value) == TBool)
 		{
-			case 'TBool':
-				createCheckbox(prefString);
-
-			default:
-				trace('swag');
+			createCheckbox(identifier);
 		}
-
-		trace(Type.typeof(prefValue).getName());
-	}
-
-	function createCheckbox(prefString:String)
-	{
-		var checkbox:CheckboxThingie = new CheckboxThingie(0, 120 * (items.length - 1), preferences.get(prefString));
-		checkboxes.push(checkbox);
-		add(checkbox);
-	}
-
-	/**
-	 * Assumes that the preference has already been checked/set?
-	 */
-	private function prefToggle(prefName:String)
-	{
-		var daSwap:Bool = preferences.get(prefName);
-		daSwap = !daSwap;
-		preferences.set(prefName, daSwap);
-		checkboxes[items.selectedIndex].daValue = daSwap;
-		trace('toggled? ' + preferences.get(prefName));
-
-		switch (prefName)
+		else
 		{
-			case 'fps-counter':
-				if (getPref('fps-counter'))
-					FlxG.stage.addChild(Main.fpsCounter);
-				else
-					FlxG.stage.removeChild(Main.fpsCounter);
+			trace('swag');
+		}
+		trace(Type.typeof(value));
+	}
+
+	public function createCheckbox(identifier:String)
+	{
+		var box:CheckboxThingie = new CheckboxThingie(0, 120 * (items.length - 1), preferences.get(identifier));
+		checkboxes.push(box);
+		add(box);
+	}
+
+	public function prefToggle(identifier:String)
+	{
+		var value:Bool = preferences.get(identifier);
+		value = !value;
+		preferences.set(identifier, value);
+		checkboxes[items.selectedIndex].daValue = value;
+		trace('toggled? ' + Std.string(preferences.get(identifier)));
+		switch (identifier)
+		{
 			case 'auto-pause':
 				FlxG.autoPause = getPref('auto-pause');
+			case 'fps-counter':
+				if (getPref('fps-counter'))
+					Lib.current.stage.addChild(Main.fpsCounter);
+				else
+					Lib.current.stage.removeChild(Main.fpsCounter);
 		}
 
-		if (prefName == 'fps-counter') {}
+		FlxG.save.data.preferences = preferences;
+		FlxG.save.flush();
 	}
 
 	override function update(elapsed:Float)
 	{
 		super.update(elapsed);
-
-		// menuCamera.followLerp = CoolUtil.camLerpShit(0.05);
-
-		items.forEach(function(daItem:TextMenuItem)
+		menuCamera.followLerp = CoolUtil.camLerpShit(0.05);
+		items.forEach(function(item:MenuItem)
 		{
-			if (items.selectedItem == daItem)
-				daItem.x = 150;
+			if (item == items.members[items.selectedIndex])
+				item.x = 150;
 			else
-				daItem.x = 120;
+				item.x = 120;
 		});
-	}
-
-	private static function preferenceCheck(prefString:String, prefValue:Dynamic):Void
-	{
-		if (preferences.get(prefString) == null)
-		{
-			preferences.set(prefString, prefValue);
-			trace('set preference!');
-		}
-		else
-		{
-			trace('found preference: ' + preferences.get(prefString));
-		}
-	}
-}
-
-class CheckboxThingie extends FlxSprite
-{
-	public var daValue(default, set):Bool;
-
-	public function new(x:Float, y:Float, daValue:Bool = false)
-	{
-		super(x, y);
-
-		frames = Paths.getSparrowAtlas('checkboxThingie');
-		animation.addByPrefix('static', 'Check Box unselected', 24, false);
-		animation.addByPrefix('checked', 'Check Box selecting animation', 24, false);
-
-		antialiasing = true;
-
-		setGraphicSize(Std.int(width * 0.7));
-		updateHitbox();
-
-		this.daValue = daValue;
-	}
-
-	override function update(elapsed:Float)
-	{
-		super.update(elapsed);
-
-		switch (animation.curAnim.name)
-		{
-			case 'static':
-				offset.set();
-			case 'checked':
-				offset.set(17, 70);
-		}
-	}
-
-	function set_daValue(value:Bool):Bool
-	{
-		if (value)
-			animation.play('checked', true);
-		else
-			animation.play('static');
-
-		return value;
 	}
 }

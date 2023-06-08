@@ -1,8 +1,11 @@
 package;
 
+import polymod.Polymod;
+import flixel.sound.FlxSound;
+import lime.app.Application;
+import ui.PreferencesMenu;
 import Conductor.BPMChangeEvent;
 import flixel.FlxG;
-import flixel.FlxGame;
 import flixel.addons.transition.FlxTransitionableState;
 import flixel.addons.ui.FlxUIState;
 import flixel.math.FlxRect;
@@ -10,12 +13,26 @@ import flixel.util.FlxTimer;
 
 class MusicBeatState extends FlxUIState
 {
-	private var curStep:Int = 0;
-	private var curBeat:Int = 0;
-	private var controls(get, never):Controls;
+	public var curStep:Int = 0;
+	public var curBeat:Int = 0;
+	public var controls(get, never):Controls;
 
-	inline function get_controls():Controls
+	inline public function get_controls():Controls
 		return PlayerSettings.player1.controls;
+
+	override public function new()
+	{
+		Polymod.clearCache();
+
+		FlxG.sound.list.forEachDead(function(sound:FlxSound) {
+			FlxG.sound.list.remove(sound, true);
+			sound.stop();
+			sound.kill();
+			sound.destroy();
+		});
+
+		super();
+	}
 
 	override function create()
 	{
@@ -27,7 +44,7 @@ class MusicBeatState extends FlxUIState
 
 	override function update(elapsed:Float)
 	{
-		// everyStep();
+		//everyStep();
 		var oldStep:Int = curStep;
 
 		updateCurStep();
@@ -35,6 +52,11 @@ class MusicBeatState extends FlxUIState
 
 		if (oldStep != curStep && curStep >= 0)
 			stepHit();
+
+		if(PreferencesMenu.getPref("fps-plus"))
+			FlxG.stage.frameRate = 1000;
+		else
+			FlxG.stage.frameRate = 60;
 
 		super.update(elapsed);
 	}
@@ -68,6 +90,6 @@ class MusicBeatState extends FlxUIState
 
 	public function beatHit():Void
 	{
-		// do literally nothing dumbass
+		//do literally nothing dumbass
 	}
 }

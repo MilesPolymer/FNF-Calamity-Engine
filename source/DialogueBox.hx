@@ -59,7 +59,7 @@ class DialogueBox extends FlxSpriteGroup
 			if (bgFade.alpha > 0.7)
 				bgFade.alpha = 0.7;
 		}, 5);
-
+		
 		portraitLeft = new FlxSprite(-20, 40);
 		portraitLeft.frames = Paths.getSparrowAtlas('weeb/senpaiPortrait');
 		portraitLeft.animation.addByPrefix('enter', 'Senpai Portrait Enter', 24, false);
@@ -127,10 +127,7 @@ class DialogueBox extends FlxSpriteGroup
 		add(handSelect);
 
 
-		if (!talkingRight)
-		{
-			// box.flipX = true;
-		}
+		talkingRight = !talkingRight;
 
 		dropText = new FlxText(242, 502, Std.int(FlxG.width * 0.6), "", 32);
 		dropText.font = 'Pixel Arial 11 Bold';
@@ -221,7 +218,9 @@ class DialogueBox extends FlxSpriteGroup
 			}
 		}
 		else if (FlxG.keys.justPressed.ANY && dialogueStarted)
+		{
 			swagDialogue.skip();
+		}
 		
 		super.update(elapsed);
 	}
@@ -237,13 +236,14 @@ class DialogueBox extends FlxSpriteGroup
 
 		// swagDialogue.text = ;
 		swagDialogue.resetText(dialogueList[0]);
-		swagDialogue.start(0.04);
+		swagDialogue.start(0.04, true);
 		swagDialogue.completeCallback = function()
 		{
-			trace("dialogue finish");
+			trace('dialogue finish');
 			handSelect.visible = true;
 			dialogueEnded = true;
 		};
+
 		handSelect.visible = false;
 		dialogueEnded = false;
 
