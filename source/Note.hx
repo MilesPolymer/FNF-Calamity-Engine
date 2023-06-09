@@ -48,13 +48,13 @@ class Note extends FlxSprite
 
 		this.prevNote = prevNote;
 		isSustainNote = sustainNote;
+		this.strumTime = strumTime;
+		this.noteData = noteData;
+
+		moves = false;
 
 		x += 50;
-		// MAKE SURE ITS DEFINITELY OFF SCREEN?
 		y -= 2000;
-		this.strumTime = strumTime;
-
-		this.noteData = noteData;
 
 		switch (PlayState.curStage)
 		{
@@ -136,7 +136,6 @@ class Note extends FlxSprite
 
 				prevNote.scale.y *= Conductor.stepCrochet / 100 * 1.5 * PlayState.SONG.speed;
 				prevNote.updateHitbox();
-				// prevNote.setGraphicSize();
 			}
 		}
 	}
@@ -147,42 +146,41 @@ class Note extends FlxSprite
 	}
 
 	override function update(elapsed:Float)
-	{
-		super.update(elapsed);
-
-		if (mustPress)
 		{
-			if (willMiss && !wasGoodHit)
+			super.update(elapsed);
+			if (mustPress)
 			{
-				tooLate = true;
-				canBeHit = false;
-			}
-			else
-			{
-				if (strumTime > Conductor.songPosition - Conductor.safeZoneOffset)
+				if (isSustainNote)
 				{
-					if (strumTime < Conductor.songPosition + 0.5 * Conductor.safeZoneOffset)
+					if (strumTime > Conductor.songPosition - (Conductor.safeZoneOffset * 1.5)
+						&& strumTime < Conductor.songPosition + (Conductor.safeZoneOffset * 0.5))
 						canBeHit = true;
+					else
+						canBeHit = false;
 				}
 				else
 				{
-					willMiss = true;
-					canBeHit = true;
+					if (strumTime > Conductor.songPosition - Conductor.safeZoneOffset
+						&& strumTime < Conductor.songPosition + Conductor.safeZoneOffset)
+						canBeHit = true;
+					else
+						canBeHit = false;
 				}
+	
+				if (strumTime < Conductor.songPosition - Conductor.safeZoneOffset && !wasGoodHit) tooLate = true;
+			}
+			else
+			{
+				canBeHit = false;
+	
+				if (strumTime <= Conductor.songPosition)
+					wasGoodHit = true;
+			}
+	
+			if (tooLate)
+			{
+				if (alpha > 0.3)
+					alpha = 0.3;
 			}
 		}
-		else
-		{
-			canBeHit = false;
-
-			if (strumTime <= Conductor.songPosition)
-				wasGoodHit = true;
-		}
-
-		if (tooLate)
-		{
-			if (alpha > 0.3)
-				alpha = 0.3;
-		}
-	}
 }

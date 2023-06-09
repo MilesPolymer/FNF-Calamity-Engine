@@ -197,7 +197,7 @@ class PlayState extends MusicBeatState {
 
 		grpNoteSplashes.add(splash);
 
-		splash.alpha = 0.1;
+		//splash.alpha = 0.1;
 
 		persistentUpdate = true;
 		persistentDraw = true;
@@ -1992,24 +1992,33 @@ class PlayState extends MusicBeatState {
 
 		var rating:FlxSprite = new FlxSprite();
 		var comboSpr:FlxSprite = new FlxSprite();
-		var score:Int = 350;
+		var score:Int = 0;
 
 		var daRating:String = "sick";
-		var doSplash:Bool = true;
+		var doSplash:Bool = false;
 
 		if (noteDiff > Conductor.safeZoneOffset * 0.9) {
 			daRating = 'shit';
+			health -= 0.07;
 			score = 50;
 			doSplash = false;
 		} else if (noteDiff > Conductor.safeZoneOffset * 0.75) {
 			daRating = 'bad';
+			health -= 0.06;	
 			score = 100;
 			doSplash = false;
-		} else if (noteDiff > Conductor.safeZoneOffset * 0.2) {
+		} else if (noteDiff > Conductor.safeZoneOffset * 0.25) {
 			daRating = 'good';
+			health += 0.01;
 			score = 200;
 			doSplash = false;
 		}
+		else if (noteDiff > Conductor.safeZoneOffset * 0) {
+			daRating = 'sick';
+			health += 0.02;
+			score = 350;
+			doSplash = true;
+		}	
 
 		if (doSplash) {
 			var splash:NoteSplash = grpNoteSplashes.recycle(NoteSplash);
@@ -2307,7 +2316,7 @@ class PlayState extends MusicBeatState {
 			} else
 				badNoteHit(controlArray);
 		}
-		if (boyfriend.holdTimer > 0.004 * Conductor.stepCrochet
+		if (boyfriend.holdTimer > (1/100) * Conductor.stepCrochet
 			&& !holdingArray.contains(true)
 			&& boyfriend.animation.curAnim.name.startsWith('sing')
 			&& !boyfriend.animation.curAnim.name.endsWith('miss')) {
@@ -2391,10 +2400,10 @@ class PlayState extends MusicBeatState {
 				combo += 1;
 			}
 
-			if (note.noteData >= 0)
+			/*if (note.noteData >= 0)
 				health += 0.023;
 			else
-				health += 0.004;
+				health += 0.004;*/
 
 			boyfriend.playAnim("sing" + ManiaBullshit.singAnims.get(ManiaBullshit.anims[SONG.mania][note.noteData]).toUpperCase(), true);
 

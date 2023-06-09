@@ -27,7 +27,7 @@ class NoteSplash extends FlxSprite
 	{
 		setPosition(x, y);
 
-		alpha = 0.6;
+		//alpha = 0.6;
 
 		animation.play('note' + (notedata % 4) + '-' + FlxG.random.int(0, 1), true);
 
